@@ -170,17 +170,14 @@ void main() {
       expect(response.ios?.minimumVersion, isNull);
     });
 
-    test('throws ArgumentError if endpoint is missing or empty', () async {
-      // Config creation will fail assertion in Dart 3 depending on how it's called,
-      // but let's test service directly with a mocked invalid config if possible,
-      // or we can just test that creating the config fails.
+    test('throws InAppUpdateException if endpoint is missing or empty', () async {
       expect(
         () => InAppUpdateConfig(source: UpdateSource.remote),
         throwsA(isA<AssertionError>()),
       );
     });
 
-    test('throws ArgumentError if endpoint is not https', () async {
+    test('throws InAppUpdateException if endpoint is not https', () async {
       final config = InAppUpdateConfig(
         source: UpdateSource.remote,
         endpoint: 'http://example.com/app-version',
@@ -188,7 +185,13 @@ void main() {
 
       expect(
         () => service.fetchUpdateConfig(config),
-        throwsA(isA<ArgumentError>()),
+        throwsA(
+          isA<InAppUpdateException>().having(
+            (e) => e.code,
+            'code',
+            InAppUpdateErrorCode.invalidConfiguration,
+          ),
+        ),
       );
     });
 
@@ -206,12 +209,14 @@ void main() {
         await service.fetchUpdateConfig(config);
         fail('Should throw exception');
       } catch (e) {
-        expect(e, isA<UpdateNetworkException>());
+        expect(e, isA<InAppUpdateException>());
+        final ex = e as InAppUpdateException;
+        expect(ex.code, InAppUpdateErrorCode.networkError);
         expect(mockClient.callCount, 3); // Initial + 2 retries
       }
     });
 
-    test('throws UpdateParseException on invalid JSON', () async {
+    test('throws InAppUpdateException on invalid JSON', () async {
       mockClient.statusCode = 200;
       mockClient.responseBody = 'invalid json';
 
@@ -223,7 +228,13 @@ void main() {
 
       expect(
         () => service.fetchUpdateConfig(config),
-        throwsA(isA<UpdateParseException>()),
+        throwsA(
+          isA<InAppUpdateException>().having(
+            (e) => e.code,
+            'code',
+            InAppUpdateErrorCode.invalidVersion,
+          ),
+        ),
       );
     });
   });

@@ -5,22 +5,7 @@ import 'dart:io';
 import '../models/in_app_update_config.dart';
 import '../models/remote_update_response.dart';
 import 'update_cache_service.dart';
-
-/// Exception thrown when a network error occurs during update check.
-class UpdateNetworkException implements Exception {
-  final String message;
-  UpdateNetworkException(this.message);
-  @override
-  String toString() => 'UpdateNetworkException: $message';
-}
-
-/// Exception thrown when the remote update response cannot be parsed.
-class UpdateParseException implements Exception {
-  final String message;
-  UpdateParseException(this.message);
-  @override
-  String toString() => 'UpdateParseException: $message';
-}
+import '../exceptions/in_app_update_exception.dart';
 
 /// Service to fetch remote update configurations.
 class RemoteUpdateService {
@@ -38,16 +23,25 @@ class RemoteUpdateService {
   Future<RemoteUpdateResponse> fetchUpdateConfig(InAppUpdateConfig config) async {
     final endpoint = config.endpoint;
     if (endpoint == null || endpoint.isEmpty) {
-      throw ArgumentError('Endpoint must not be null or empty for remote source.');
+      throw const InAppUpdateException(
+        InAppUpdateErrorCode.invalidConfiguration,
+        'Endpoint must not be null or empty for remote source.',
+      );
     }
 
     final uri = Uri.tryParse(endpoint);
     if (uri == null) {
-      throw ArgumentError('Invalid endpoint URL.');
+      throw const InAppUpdateException(
+        InAppUpdateErrorCode.invalidConfiguration,
+        'Invalid endpoint URL.',
+      );
     }
 
     if (uri.scheme != 'https') {
-      throw ArgumentError('Endpoint URL must use HTTPS.');
+      throw const InAppUpdateException(
+        InAppUpdateErrorCode.invalidConfiguration,
+        'Endpoint URL must use HTTPS.',
+      );
     }
 
     RemoteUpdateResponse? response;
@@ -56,17 +50,21 @@ class RemoteUpdateService {
       try {
         response = await _attemptFetch(uri, config.timeout);
         break; // Success
-      } on UpdateParseException {
-        rethrow;
-      } catch (e) {
+      } on InAppUpdateException catch (e) {
+        if (e.code == InAppUpdateErrorCode.invalidVersion) {
+          rethrow;
+        }
         attempts++;
         if (attempts > config.maxRetries) {
-          // If all retries fail, try to fall back to cache
           final cached = await _cacheService.getCache();
           if (cached != null) {
             return cached;
           }
-          throw UpdateNetworkException('Failed to fetch remote config after $attempts attempts: $e');
+          throw InAppUpdateException(
+            e.code,
+            'Failed to fetch remote config after $attempts attempts.',
+            e,
+          );
         }
         await Future.delayed(config.retryDelay);
       }
@@ -77,7 +75,10 @@ class RemoteUpdateService {
       return response;
     }
 
-    throw UpdateNetworkException('Failed to fetch remote config.');
+    throw const InAppUpdateException(
+      InAppUpdateErrorCode.networkError,
+      'Failed to fetch remote config.',
+    );
   }
 
   Future<RemoteUpdateResponse> _attemptFetch(Uri uri, Duration timeout) async {
@@ -86,7 +87,10 @@ class RemoteUpdateService {
       final response = await request.close().timeout(timeout);
 
       if (response.statusCode != 200) {
-        throw UpdateNetworkException('HTTP Error: ${response.statusCode}');
+        throw InAppUpdateException(
+          InAppUpdateErrorCode.networkError,
+          'HTTP Error: ${response.statusCode}',
+        );
       }
 
       final responseBody = await response.transform(utf8.decoder).join();
@@ -95,12 +99,24 @@ class RemoteUpdateService {
         final jsonMap = jsonDecode(responseBody) as Map<String, dynamic>;
         return RemoteUpdateResponse.fromJson(jsonMap);
       } catch (e) {
-        throw UpdateParseException('Failed to parse JSON response: $e');
+        throw InAppUpdateException(
+          InAppUpdateErrorCode.invalidVersion,
+          'Failed to parse JSON response: $e',
+          e,
+        );
       }
-    } on TimeoutException {
-      throw UpdateNetworkException('Request timed out.');
+    } on TimeoutException catch (e) {
+      throw InAppUpdateException(
+        InAppUpdateErrorCode.timeout,
+        'Request timed out.',
+        e,
+      );
     } on SocketException catch (e) {
-      throw UpdateNetworkException('Network error: ${e.message}');
+      throw InAppUpdateException(
+        InAppUpdateErrorCode.networkError,
+        'Network error: ${e.message}',
+        e,
+      );
     }
   }
 }

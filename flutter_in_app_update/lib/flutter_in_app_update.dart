@@ -21,6 +21,11 @@ export 'enums/update_policy.dart';
 export 'models/update_decision.dart';
 export 'services/update_decision_engine.dart';
 export 'services/remote_update_service.dart';
+export 'exceptions/in_app_update_exception.dart';
+export 'exceptions/error_mapper.dart';
+
+import 'exceptions/in_app_update_exception.dart';
+import 'exceptions/error_mapper.dart';
 
 /// The main entry point for the `flutter_in_app_update` plugin.
 class FlutterInAppUpdate {
@@ -39,7 +44,13 @@ class FlutterInAppUpdate {
   }
 
   Future<String?> getPlatformVersion() async {
-    return _channel.invokeMethod<String>('getPlatformVersion');
+    try {
+      return await _channel.invokeMethod<String>('getPlatformVersion');
+    } on PlatformException catch (e) {
+      throw ErrorMapper.mapPlatformException(e);
+    } catch (e) {
+      throw ErrorMapper.mapGenericError(e);
+    }
   }
 
   /// Checks if an update is available based on the configured source.
@@ -47,11 +58,19 @@ class FlutterInAppUpdate {
   /// Returns an [UpdateInfo] object containing the available version, current
   /// version, and update status.
   static Future<UpdateInfo> checkForUpdate() async {
-    final result = await _channel.invokeMapMethod<String, dynamic>('checkForUpdate');
+    Map<String, dynamic>? result;
+    try {
+      result = await _channel.invokeMapMethod<String, dynamic>('checkForUpdate');
+    } on PlatformException catch (e) {
+      throw ErrorMapper.mapPlatformException(e);
+    } catch (e) {
+      throw ErrorMapper.mapGenericError(e);
+    }
+
     if (result == null) {
-      throw PlatformException(
-        code: 'UNAVAILABLE',
-        message: 'Could not fetch native update info',
+      throw const InAppUpdateException(
+        InAppUpdateErrorCode.updateFailed,
+        'Could not fetch native update info',
       );
     }
     
@@ -102,28 +121,52 @@ class FlutterInAppUpdate {
 
   /// Starts a flexible update flow.
   /// 
-  /// Only supported on Android. Throws a [PlatformException] on iOS.
+  /// Only supported on Android. Throws a [InAppUpdateException] on iOS.
   static Future<void> startFlexibleUpdate() async {
-    await _channel.invokeMethod('startFlexibleUpdate');
+    try {
+      await _channel.invokeMethod('startFlexibleUpdate');
+    } on PlatformException catch (e) {
+      throw ErrorMapper.mapPlatformException(e);
+    } catch (e) {
+      throw ErrorMapper.mapGenericError(e);
+    }
   }
 
   /// Starts an immediate update flow.
   /// 
-  /// Only supported on Android. Throws a [PlatformException] on iOS.
+  /// Only supported on Android. Throws a [InAppUpdateException] on iOS.
   static Future<void> startImmediateUpdate() async {
-    await _channel.invokeMethod('startImmediateUpdate');
+    try {
+      await _channel.invokeMethod('startImmediateUpdate');
+    } on PlatformException catch (e) {
+      throw ErrorMapper.mapPlatformException(e);
+    } catch (e) {
+      throw ErrorMapper.mapGenericError(e);
+    }
   }
 
   /// Completes a flexible update that has been downloaded.
   /// 
-  /// Only supported on Android. Throws a [PlatformException] on iOS.
+  /// Only supported on Android. Throws a [InAppUpdateException] on iOS.
   static Future<void> completeFlexibleUpdate() async {
-    await _channel.invokeMethod('completeFlexibleUpdate');
+    try {
+      await _channel.invokeMethod('completeFlexibleUpdate');
+    } on PlatformException catch (e) {
+      throw ErrorMapper.mapPlatformException(e);
+    } catch (e) {
+      throw ErrorMapper.mapGenericError(e);
+    }
   }
 
   /// Opens the app's store page (Play Store / App Store).
   static Future<void> openStore() async {
-    await _channel.invokeMethod('openStore');
+    try {
+      await _channel.invokeMethod('openStore');
+    } on PlatformException catch (e) {
+      throw ErrorMapper.mapPlatformException(e);
+    } catch (e) {
+      throw ErrorMapper.mapGenericError(e);
+    }
   }
 
   /// Stream to listen to update install status (useful for tracking flexible 
