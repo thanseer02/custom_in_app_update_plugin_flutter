@@ -7,8 +7,8 @@ class UpdatePromptBuilder extends StatefulWidget {
   /// The plugin instance to use (defaults to a new [MyInAppUpdate] instance).
   final MyInAppUpdate? plugin;
 
-  /// Builder invoked when an update is available.
-  final UpdateUIBuilder builder;
+  /// Builder invoked when an update is available (defaults to [defaultUiBuilder]).
+  final UpdateUIBuilder? builder;
 
   /// Optional builder invoked while checking for updates.
   final WidgetBuilder? loadingBuilder;
@@ -27,7 +27,7 @@ class UpdatePromptBuilder extends StatefulWidget {
 
   const UpdatePromptBuilder({
     super.key,
-    required this.builder,
+    this.builder,
     this.plugin,
     this.loadingBuilder,
     this.noUpdateBuilder,
@@ -122,7 +122,8 @@ class _UpdatePromptBuilderState extends State<UpdatePromptBuilder> {
 
     final info = _updateInfo;
     if (!_isDismissed && info != null && info.isUpdateAvailable) {
-      return widget.builder(context, info, _onUpdate, _onDismiss);
+      final effectiveBuilder = widget.builder ?? defaultUiBuilder;
+      return effectiveBuilder(context, info, _onUpdate, _onDismiss);
     }
 
     return widget.noUpdateBuilder?.call(context) ?? const SizedBox.shrink();

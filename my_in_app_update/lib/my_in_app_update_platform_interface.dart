@@ -35,8 +35,21 @@ abstract class MyInAppUpdatePlatform extends PlatformInterface {
   }
 
   /// Checks if an update is available on the platform store.
-  Future<UpdateInfo> checkForUpdate() {
+  Future<UpdateInfo> checkForUpdate({
+    String? iosBundleId,
+    String? iosCountryCode,
+  }) {
     throw UnimplementedError('checkForUpdate() has not been implemented.');
+  }
+
+  /// Retrieves application metadata (bundleId, currentVersion, buildNumber).
+  Future<Map<String, dynamic>?> getAppInfo() {
+    throw UnimplementedError('getAppInfo() has not been implemented.');
+  }
+
+  /// Opens the App Store URL on iOS.
+  Future<bool> openAppStore(String url) {
+    throw UnimplementedError('openAppStore() has not been implemented.');
   }
 
   /// Starts an immediate (full-screen blocking) update flow.

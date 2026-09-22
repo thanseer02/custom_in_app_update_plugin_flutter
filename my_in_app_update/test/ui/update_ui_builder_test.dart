@@ -7,6 +7,8 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 class MockPlatformWithUpdate with MockPlatformInterfaceMixin implements MyInAppUpdatePlatform {
   bool immediateTriggered = false;
   bool flexibleTriggered = false;
+  bool appStoreOpened = false;
+  String? openedUrl;
 
   @override
   Stream<DownloadProgress> get downloadProgressStream => const Stream.empty();
@@ -15,7 +17,10 @@ class MockPlatformWithUpdate with MockPlatformInterfaceMixin implements MyInAppU
   Future<String?> getPlatformVersion() => Future.value('1.0');
 
   @override
-  Future<UpdateInfo> checkForUpdate() => Future.value(
+  Future<UpdateInfo> checkForUpdate({
+    String? iosBundleId,
+    String? iosCountryCode,
+  }) => Future.value(
         const UpdateInfo(
           versionCode: 15,
           availability: UpdateAvailability.available,
@@ -23,6 +28,20 @@ class MockPlatformWithUpdate with MockPlatformInterfaceMixin implements MyInAppU
           flexibleAllowed: true,
         ),
       );
+
+  @override
+  Future<Map<String, dynamic>?> getAppInfo() => Future.value({
+        'bundleId': 'com.example.app',
+        'currentVersion': '1.0.0',
+        'buildNumber': '1',
+      });
+
+  @override
+  Future<bool> openAppStore(String url) {
+    appStoreOpened = true;
+    openedUrl = url;
+    return Future.value(true);
+  }
 
   @override
   Future<void> startImmediateUpdate() {
@@ -132,5 +151,92 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('custom_banner')), findsNothing);
+  });
+
+  testWidgets('checkForUpdate uses defaultUiBuilder when no uiBuilder is passed', (tester) async {
+    final mockPlatform = MockPlatformWithUpdate();
+    MyInAppUpdatePlatform.instance = mockPlatform;
+    final plugin = MyInAppUpdate();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              return ElevatedButton(
+                onPressed: () {
+                  plugin.checkForUpdate(context: context);
+                },
+                child: const Text('Check Update Default'),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    // Tap button to check for updates with default UI
+    await tester.tap(find.text('Check Update Default'));
+    await tester.pumpAndSettle();
+
+    // Verify default AlertDialog contents
+    expect(find.text('Update Available'), findsOneWidget);
+    expect(find.textContaining('A new version (15) is available'), findsOneWidget);
+    expect(find.text('Later'), findsOneWidget);
+    expect(find.text('Update Now'), findsOneWidget);
+
+    // Tap Later to dismiss
+    await tester.tap(find.text('Later'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Update Available'), findsNothing);
+  });
+
+  testWidgets('promptUpdate redirects to App Store when source is appStore', (tester) async {
+    final mockPlatform = MockPlatformWithUpdate();
+    MyInAppUpdatePlatform.instance = mockPlatform;
+    final plugin = MyInAppUpdate();
+
+    const iosInfo = UpdateInfo(
+      versionCode: 123456789,
+      availableVersion: '2.5.0',
+      currentVersion: '2.4.0',
+      source: UpdateSource.appStore,
+      appStoreUrl: 'https://apps.apple.com/app/id123456789',
+      availability: UpdateAvailability.available,
+      flexibleAllowed: true,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              return ElevatedButton(
+                onPressed: () {
+                  plugin.promptUpdate(
+                    context: context,
+                    info: iosInfo,
+                  );
+                },
+                child: const Text('Show iOS Update'),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Show iOS Update'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Update Available'), findsOneWidget);
+
+    // Tap Download (Update) button
+    await tester.tap(find.text('Download'));
+    await tester.pumpAndSettle();
+
+    expect(mockPlatform.appStoreOpened, isTrue);
+    expect(mockPlatform.openedUrl, 'https://apps.apple.com/app/id123456789');
   });
 }

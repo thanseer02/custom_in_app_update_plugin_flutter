@@ -1,12 +1,28 @@
 import 'package:flutter/foundation.dart';
 import '../enums/update_availability.dart';
+import '../enums/update_source.dart';
 
 /// Platform-agnostic update information returned by the plugin.
-/// Consumers can build custom UI/logic off this model without coupling to native Play Core models.
+/// Consumers can build custom UI/logic off this model without coupling to native platform types.
 @immutable
 class UpdateInfo {
-  /// The version code of the available update (0 if none available).
+  /// The version code / track ID of the available update (0 if none available).
   final int versionCode;
+
+  /// The human-readable version name of the available update (e.g. "2.1.0").
+  final String? availableVersion;
+
+  /// The currently installed version name (e.g. "2.0.0").
+  final String? currentVersion;
+
+  /// Release notes / changelog for the available version (available on iOS / custom remote).
+  final String? releaseNotes;
+
+  /// Direct URL to the application page on the platform store.
+  final String? appStoreUrl;
+
+  /// The source platform/API from which update metadata was resolved.
+  final UpdateSource source;
 
   /// The update availability status.
   final UpdateAvailability availability;
@@ -35,6 +51,11 @@ class UpdateInfo {
   const UpdateInfo({
     required this.versionCode,
     required this.availability,
+    this.availableVersion,
+    this.currentVersion,
+    this.releaseNotes,
+    this.appStoreUrl,
+    this.source = UpdateSource.playStore,
     this.priority = 0,
     this.immediateAllowed = false,
     this.flexibleAllowed = false,
@@ -55,10 +76,25 @@ class UpdateInfo {
 
   /// Creates an [UpdateInfo] instance from a Map returned by native platform channels.
   factory UpdateInfo.fromMap(Map<dynamic, dynamic> map) {
+    UpdateSource resolvedSource = UpdateSource.playStore;
+    if (map['source'] != null) {
+      final srcStr = map['source'].toString();
+      if (srcStr.contains('appStore')) {
+        resolvedSource = UpdateSource.appStore;
+      } else if (srcStr.contains('customRemote')) {
+        resolvedSource = UpdateSource.customRemote;
+      }
+    }
+
     return UpdateInfo(
       versionCode: (map['availableVersionCode'] as num?)?.toInt() ??
           (map['versionCode'] as num?)?.toInt() ??
           0,
+      availableVersion: map['availableVersion'] as String? ?? map['versionName'] as String?,
+      currentVersion: map['currentVersion'] as String?,
+      releaseNotes: map['releaseNotes'] as String?,
+      appStoreUrl: map['appStoreUrl'] as String? ?? map['trackViewUrl'] as String?,
+      source: resolvedSource,
       availability: map['updateAvailability'] is UpdateAvailability
           ? map['updateAvailability'] as UpdateAvailability
           : UpdateAvailability.fromValue(
@@ -83,6 +119,11 @@ class UpdateInfo {
     return {
       'versionCode': versionCode,
       'availableVersionCode': versionCode,
+      'availableVersion': availableVersion,
+      'currentVersion': currentVersion,
+      'releaseNotes': releaseNotes,
+      'appStoreUrl': appStoreUrl,
+      'source': source.name,
       'availability': availability.value,
       'updateAvailability': availability.value,
       'priority': priority,
@@ -99,6 +140,11 @@ class UpdateInfo {
   /// Creates a copy with modified fields.
   UpdateInfo copyWith({
     int? versionCode,
+    String? availableVersion,
+    String? currentVersion,
+    String? releaseNotes,
+    String? appStoreUrl,
+    UpdateSource? source,
     UpdateAvailability? availability,
     int? priority,
     bool? immediateAllowed,
@@ -110,6 +156,11 @@ class UpdateInfo {
   }) {
     return UpdateInfo(
       versionCode: versionCode ?? this.versionCode,
+      availableVersion: availableVersion ?? this.availableVersion,
+      currentVersion: currentVersion ?? this.currentVersion,
+      releaseNotes: releaseNotes ?? this.releaseNotes,
+      appStoreUrl: appStoreUrl ?? this.appStoreUrl,
+      source: source ?? this.source,
       availability: availability ?? this.availability,
       priority: priority ?? this.priority,
       immediateAllowed: immediateAllowed ?? this.immediateAllowed,
@@ -124,7 +175,7 @@ class UpdateInfo {
 
   @override
   String toString() {
-    return 'UpdateInfo(versionCode: $versionCode, availability: $availability, priority: $priority, immediateAllowed: $immediateAllowed, flexibleAllowed: $flexibleAllowed, stalenessDays: $clientVersionStalenessDays, installStatus: $installStatus, bytesDownloaded: $bytesDownloaded, totalBytes: $totalBytesToDownload)';
+    return 'UpdateInfo(versionCode: $versionCode, version: $availableVersion, availability: $availability, source: $source, priority: $priority, immediateAllowed: $immediateAllowed, flexibleAllowed: $flexibleAllowed, releaseNotes: $releaseNotes)';
   }
 
   @override
@@ -132,6 +183,11 @@ class UpdateInfo {
     if (identical(this, other)) return true;
     return other is UpdateInfo &&
         other.versionCode == versionCode &&
+        other.availableVersion == availableVersion &&
+        other.currentVersion == currentVersion &&
+        other.releaseNotes == releaseNotes &&
+        other.appStoreUrl == appStoreUrl &&
+        other.source == source &&
         other.availability == availability &&
         other.priority == priority &&
         other.immediateAllowed == immediateAllowed &&
@@ -146,6 +202,11 @@ class UpdateInfo {
   int get hashCode {
     return Object.hash(
       versionCode,
+      availableVersion,
+      currentVersion,
+      releaseNotes,
+      appStoreUrl,
+      source,
       availability,
       priority,
       immediateAllowed,

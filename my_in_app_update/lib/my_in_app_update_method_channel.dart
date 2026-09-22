@@ -7,6 +7,7 @@ import 'my_in_app_update_platform_interface.dart';
 import 'src/enums/update_availability.dart';
 import 'src/models/download_progress.dart';
 import 'src/models/update_info.dart';
+import 'src/services/app_store_lookup_service.dart';
 
 /// An implementation of [MyInAppUpdatePlatform] that uses method channels.
 class MethodChannelMyInAppUpdate extends MyInAppUpdatePlatform {
@@ -65,7 +66,46 @@ class MethodChannelMyInAppUpdate extends MyInAppUpdatePlatform {
   }
 
   @override
-  Future<UpdateInfo> checkForUpdate() async {
+  Future<Map<String, dynamic>?> getAppInfo() async {
+    final result = await methodChannel.invokeMapMethod<String, dynamic>('getAppInfo');
+    return result;
+  }
+
+  @override
+  Future<bool> openAppStore(String url) async {
+    final result = await methodChannel.invokeMethod<bool>('openAppStore', {
+      'url': url,
+    });
+    return result ?? false;
+  }
+
+  @override
+  Future<UpdateInfo> checkForUpdate({
+    String? iosBundleId,
+    String? iosCountryCode,
+  }) async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      String bundleId = iosBundleId ?? '';
+      String currentVersion = '1.0.0';
+
+      final appInfo = await getAppInfo();
+      if (appInfo != null) {
+        if (bundleId.isEmpty) {
+          bundleId = (appInfo['bundleId'] as String?) ?? '';
+        }
+        currentVersion = (appInfo['currentVersion'] as String?) ?? '1.0.0';
+      }
+
+      final lookupService = AppStoreLookupService();
+      final info = await lookupService.lookup(
+        bundleId: bundleId,
+        currentVersion: currentVersion,
+        countryCode: iosCountryCode,
+      );
+      _lastKnownInfo = info;
+      return info;
+    }
+
     final result = await methodChannel.invokeMapMethod<dynamic, dynamic>('checkForUpdate');
     if (result == null) {
       return const UpdateInfo(

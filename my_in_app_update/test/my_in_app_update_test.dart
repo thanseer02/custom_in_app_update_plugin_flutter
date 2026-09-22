@@ -20,7 +20,10 @@ class MockMyInAppUpdatePlatform
   Future<String?> getPlatformVersion() => Future.value('42');
 
   @override
-  Future<UpdateInfo> checkForUpdate() => Future.value(
+  Future<UpdateInfo> checkForUpdate({
+    String? iosBundleId,
+    String? iosCountryCode,
+  }) => Future.value(
         const UpdateInfo(
           versionCode: 10,
           availability: UpdateAvailability.available,
@@ -29,6 +32,17 @@ class MockMyInAppUpdatePlatform
           flexibleAllowed: true,
         ),
       );
+
+  @override
+  Future<Map<String, dynamic>?> getAppInfo() => Future.value({
+        'bundleId': 'com.example.app',
+        'currentVersion': '1.0.0',
+        'buildNumber': '1',
+        'appName': 'Example App',
+      });
+
+  @override
+  Future<bool> openAppStore(String url) => Future.value(true);
 
   @override
   Future<void> startImmediateUpdate() => Future.value();
