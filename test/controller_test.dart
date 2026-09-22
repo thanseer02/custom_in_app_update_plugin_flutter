@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:custom_app_update/custom_app_update.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:in_app_update/in_app_update.dart';
 
 AppUpdateInfo available({
   InstallStatus status = InstallStatus.unknown,
@@ -24,7 +23,7 @@ AppUpdateInfo available({
 class FakeBackend implements UpdateBackend {
   @override
   bool isSupported = true;
-  final events = StreamController<InstallStatus>.broadcast(sync: true);
+  final events = StreamController<UpdateInstallState>.broadcast(sync: true);
   AppUpdateInfo info = available();
   Completer<AppUpdateInfo>? checkResult;
   final result = Completer<AppUpdateResult>();
@@ -33,7 +32,7 @@ class FakeBackend implements UpdateBackend {
   Object? installError;
 
   @override
-  Stream<InstallStatus> get statuses => events.stream;
+  Stream<UpdateInstallState> get statuses => events.stream;
   @override
   Future<AppUpdateInfo> check() async =>
       checkResult == null ? info : await checkResult!.future;
@@ -73,7 +72,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       await controller.download();
       expect(backend.downloads, 1);
-      backend.events.add(InstallStatus.downloading);
+      backend.events.add(const UpdateInstallState(status: InstallStatus.downloading));
       expect(controller.phase, UpdatePhase.downloading);
       backend.result.complete(AppUpdateResult.success);
       await download;
@@ -118,7 +117,7 @@ void main() {
     await controller.check();
     backend.checkResult = Completer<AppUpdateInfo>();
     final checking = controller.check();
-    backend.events.add(InstallStatus.downloaded);
+    backend.events.add(const UpdateInstallState(status: InstallStatus.downloaded));
     backend.checkResult!.complete(available());
     await checking;
     expect(controller.canInstall, isTrue);

@@ -1,0 +1,22 @@
+name: custom_app_update_example
+description: Custom app update plugin demo with sheets, dialogs, and screens.
+publish_to: none
+version: 1.0.0+10
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+  flutter: '>=3.27.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  custom_app_update:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

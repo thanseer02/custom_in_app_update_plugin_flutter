@@ -3,8 +3,11 @@ library;
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:in_app_update/in_app_update.dart';
+
+import 'src/models.dart';
+export 'src/models.dart';
 
 enum UpdatePhase {
   idle,
@@ -25,28 +28,46 @@ enum UpdatePhase {
 /// Implement this interface to test your UI without a Play Store release.
 abstract interface class UpdateBackend {
   bool get isSupported;
-  Stream<InstallStatus> get statuses;
+  Stream<UpdateInstallState> get statuses;
   Future<AppUpdateInfo> check();
   Future<AppUpdateResult> download();
   Future<void> install();
 }
 
 class GooglePlayUpdateBackend implements UpdateBackend {
+  static const _methods = MethodChannel('dev.customappupdate/methods');
+  static const _events = EventChannel('dev.customappupdate/events');
+
   @override
   bool get isSupported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   @override
-  Stream<InstallStatus> get statuses => InAppUpdate.installUpdateListener;
+  Stream<UpdateInstallState> get statuses => _events
+      .receiveBroadcastStream()
+      .map((event) => UpdateInstallState.fromMap(
+          Map<Object?, Object?>.from(event as Map)));
 
   @override
-  Future<AppUpdateInfo> check() => InAppUpdate.checkForUpdate();
+  Future<AppUpdateInfo> check() async {
+    final result = await _methods.invokeMapMethod<Object?, Object?>('check');
+    if (result == null) {
+      throw PlatformException(code: 'EMPTY_RESPONSE');
+    }
+    return AppUpdateInfo.fromMap(result);
+  }
 
   @override
-  Future<AppUpdateResult> download() => InAppUpdate.startFlexibleUpdate();
+  Future<AppUpdateResult> download() async {
+    return switch (await _methods.invokeMethod<String>('download')) {
+      'downloaded' => AppUpdateResult.success,
+      'canceled' => AppUpdateResult.userDeniedUpdate,
+      _ => AppUpdateResult.inAppUpdateFailed,
+    };
+  }
 
   @override
-  Future<void> install() => InAppUpdate.completeFlexibleUpdate();
+  Future<void> install() => _methods.invokeMethod<void>('install');
 }
 
 /// Own ONE controller above your routes/dialogs/sheets and dispose it with
@@ -62,7 +83,7 @@ class CustomAppUpdateController extends ChangeNotifier
   }
 
   final UpdateBackend _backend;
-  StreamSubscription<InstallStatus>? _subscription;
+  StreamSubscription<UpdateInstallState>? _subscription;
   UpdatePhase _phase = UpdatePhase.idle;
   AppUpdateInfo? _info;
   Object? _error;
@@ -72,14 +93,25 @@ class CustomAppUpdateController extends ChangeNotifier
   bool _completing = false;
   int _statusRevision = 0;
   Future<void>? _checkFuture;
+  int _bytesDownloaded = 0;
+  int _totalBytesToDownload = 0;
 
   UpdatePhase get phase => _phase;
   AppUpdateInfo? get info => _info;
   Object? get error => _error;
   bool get isChecking => _checking;
 
-  /// The plugin exposes statuses, not byte counts. Use indeterminate progress.
-  double? get downloadProgress => null;
+  int get bytesDownloaded => _bytesDownloaded;
+  int get totalBytesToDownload => _totalBytesToDownload;
+
+  /// Real progress in [0, 1]; null until Play reports a download size.
+  double? get downloadProgress {
+    if (_phase == UpdatePhase.readyToInstall) return 1;
+    if (_phase != UpdatePhase.downloading || _totalBytesToDownload <= 0) {
+      return null;
+    }
+    return (_bytesDownloaded / _totalBytesToDownload).clamp(0.0, 1.0);
+  }
 
   bool get canDownload =>
       !_disposed &&
@@ -127,8 +159,10 @@ class CustomAppUpdateController extends ChangeNotifier
       // A live status received during this request is more recent than its
       // snapshot. Do not replace a downloaded event with an older state.
       if (revision != _statusRevision) return;
+      _bytesDownloaded = info.bytesDownloaded;
+      _totalBytesToDownload = info.totalBytesToDownload;
       if (_applyInstallStatus(info.installStatus)) return;
-      if (_starting || _completing) return;
+      if (_phase == UpdatePhase.awaitingConsent || _completing) return;
       _phase = switch (info.updateAvailability) {
         UpdateAvailability.updateAvailable =>
           info.flexibleUpdateAllowed
@@ -177,6 +211,8 @@ class CustomAppUpdateController extends ChangeNotifier
         return;
       }
       _error = null;
+      _bytesDownloaded = 0;
+      _totalBytesToDownload = 0;
       _setPhase(UpdatePhase.awaitingConsent);
       final result = await _backend.download();
       if (_disposed) return;
@@ -222,10 +258,19 @@ class CustomAppUpdateController extends ChangeNotifier
     }
   }
 
-  void _onStatus(InstallStatus status) {
-    if (_disposed) return;
+  void _onStatus(UpdateInstallState state) {
+    if (_disposed || state.status == InstallStatus.unknown) return;
     _statusRevision++;
-    if (_applyInstallStatus(status)) _notify();
+    _bytesDownloaded = state.bytesDownloaded;
+    _totalBytesToDownload = state.totalBytesToDownload;
+    if (state.errorCode != 0) {
+      _error = PlatformException(
+        code: 'PLAY_INSTALL_ERROR',
+        message: 'Google Play install error ${state.errorCode}',
+        details: state.errorCode,
+      );
+    }
+    if (_applyInstallStatus(state.status)) _notify();
   }
 
   bool _applyInstallStatus(InstallStatus status) {
