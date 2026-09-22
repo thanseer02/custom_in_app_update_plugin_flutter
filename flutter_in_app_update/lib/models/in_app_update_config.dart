@@ -1,52 +1,35 @@
-/// Configuration options for the in-app update checking and installation process.
+/// Configuration for the in-app update process.
 class InAppUpdateConfig {
-  /// The minimum acceptable version. If the available version is lower than this,
-  /// the update might be ignored depending on your custom logic.
+  /// The minimum version required to run the app. If the store version is
+  /// greater than this, the user might be forced to update.
   final String? minimumVersion;
 
-  /// The recommended version. If the available version matches or exceeds this,
-  /// a flexible update might be suggested.
+  /// The recommended version. Useful to show an optional update prompt.
   final String? recommendedVersion;
 
-  /// Whether to force an immediate update if an update is available.
+  /// The latest available version on the backend or store. If provided, this overrides
+  /// the version fetched natively.
+  final String? latestVersion;
+
+  /// Whether the update should be forced, completely blocking the user.
   final bool forceUpdate;
 
-  /// Whether to automatically check for updates on application startup.
+  /// Whether the app should check for updates on startup automatically.
   final bool checkOnStartup;
 
-  /// The maximum duration to wait for a response when checking for an update.
+  /// The interval between automatic update checks.
+  final Duration? checkInterval;
+
+  /// Timeout for the update check network request.
   final Duration timeout;
 
-  /// Creates a new [InAppUpdateConfig] instance.
   const InAppUpdateConfig({
     this.minimumVersion,
     this.recommendedVersion,
+    this.latestVersion,
     this.forceUpdate = false,
     this.checkOnStartup = true,
-    this.timeout = const Duration(seconds: 30),
+    this.checkInterval,
+    this.timeout = const Duration(seconds: 15),
   });
-
-  /// Creates an [InAppUpdateConfig] from a Map.
-  factory InAppUpdateConfig.fromMap(Map<String, dynamic> map) {
-    return InAppUpdateConfig(
-      minimumVersion: map['minimumVersion'] as String?,
-      recommendedVersion: map['recommendedVersion'] as String?,
-      forceUpdate: map['forceUpdate'] as bool? ?? false,
-      checkOnStartup: map['checkOnStartup'] as bool? ?? true,
-      timeout: map['timeoutMs'] != null 
-          ? Duration(milliseconds: map['timeoutMs'] as int)
-          : const Duration(seconds: 30),
-    );
-  }
-
-  /// Converts the [InAppUpdateConfig] instance to a Map.
-  Map<String, dynamic> toMap() {
-    return {
-      'minimumVersion': minimumVersion,
-      'recommendedVersion': recommendedVersion,
-      'forceUpdate': forceUpdate,
-      'checkOnStartup': checkOnStartup,
-      'timeoutMs': timeout.inMilliseconds,
-    };
-  }
 }

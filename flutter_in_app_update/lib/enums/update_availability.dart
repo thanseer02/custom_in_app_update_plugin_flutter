@@ -1,17 +1,17 @@
-/// Indicates the availability of an update.
+/// Represents the availability of an update.
 enum UpdateAvailability {
-  /// The update availability is unknown or there was an error checking for an update.
+  /// The availability of an update is unknown.
   unknown,
 
-  /// No update is currently available.
+  /// No update is available.
   noUpdate,
 
-  /// An update is available to be downloaded and installed.
+  /// An update is available.
   updateAvailable,
 
-  /// An update was triggered by the developer (e.g., via Play Console).
+  /// An update is already in progress, triggered by the developer.
   developerTriggered,
 
-  /// An update is currently in progress (downloading or installing).
+  /// An update is currently in progress.
   updateInProgress,
 }

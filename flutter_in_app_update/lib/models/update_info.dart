@@ -1,101 +1,108 @@
 import '../enums/update_availability.dart';
 import '../enums/update_install_status.dart';
-import '../enums/update_type.dart';
 
-/// Contains comprehensive information about an available update, if any,
-/// and the current installation status.
+/// Contains information about the availability and status of an app update.
 class UpdateInfo {
-  /// Whether an update is available to be installed.
+  /// Whether an update is available (helper property based on availability).
   final bool isUpdateAvailable;
 
-  /// The current availability state of the update.
-  final UpdateAvailability updateAvailability;
-
-  /// The current version of the app installed on the device.
+  /// The current version of the app.
   final String currentVersion;
 
-  /// The version of the available update, if any.
-  final String? availableVersion;
+  /// The available version of the app on the store.
+  final String availableVersion;
 
-  /// The current build number of the app installed on the device.
-  final int? currentBuildNumber;
+  /// The current build number of the app.
+  final int currentBuildNumber;
 
-  /// The build number of the available update, if any.
-  final int? availableBuildNumber;
+  /// The available build number of the app on the store.
+  final int availableBuildNumber;
 
-  /// A list of update types that are allowed for the current update.
-  final List<UpdateType> allowedUpdateTypes;
+  /// Whether an immediate update is allowed.
+  final bool immediateUpdateAllowed;
 
-  /// The priority of the update, typically provided by the store (e.g., 0 to 5 on Android).
-  final int updatePriority;
+  /// Whether a flexible update is allowed.
+  final bool flexibleUpdateAllowed;
+
+  /// The priority of the update as defined in Google Play Console (0-5).
+  /// Only available on Android. Null on iOS.
+  final int? updatePriority;
 
   /// The number of days since the update was made available on the store.
+  /// Only available on Android. Null on iOS.
   final int? clientVersionStalenessDays;
 
-  /// The current installation status of the update (e.g., downloading, installed).
+  /// The current installation status of the update (useful for flexible updates).
   final UpdateInstallStatus installStatus;
 
-  /// The platform for which this update info was retrieved ('android' or 'ios').
+  /// The availability status of the update.
+  final UpdateAvailability availability;
+
+  /// The platform this information was fetched for ('android' or 'ios').
   final String platform;
 
-  /// Creates a new [UpdateInfo] instance.
   const UpdateInfo({
     required this.isUpdateAvailable,
-    required this.updateAvailability,
     required this.currentVersion,
-    this.availableVersion,
-    this.currentBuildNumber,
-    this.availableBuildNumber,
-    this.allowedUpdateTypes = const [],
-    this.updatePriority = 0,
+    required this.availableVersion,
+    required this.currentBuildNumber,
+    required this.availableBuildNumber,
+    required this.immediateUpdateAllowed,
+    required this.flexibleUpdateAllowed,
+    this.updatePriority,
     this.clientVersionStalenessDays,
-    this.installStatus = UpdateInstallStatus.unknown,
+    required this.installStatus,
+    required this.availability,
     required this.platform,
   });
 
-  /// Creates an [UpdateInfo] from a Map (typically received from native side).
-  factory UpdateInfo.fromMap(Map<String, dynamic> map) {
+  /// Creates an [UpdateInfo] from a JSON map.
+  factory UpdateInfo.fromJson(Map<String, dynamic> json) {
     return UpdateInfo(
-      isUpdateAvailable: map['isUpdateAvailable'] as bool? ?? false,
-      updateAvailability: UpdateAvailability.values.firstWhere(
-        (e) => e.name == map['updateAvailability'],
-        orElse: () => UpdateAvailability.unknown,
-      ),
-      currentVersion: map['currentVersion'] as String? ?? '0.0.0',
-      availableVersion: map['availableVersion'] as String?,
-      currentBuildNumber: map['currentBuildNumber'] as int?,
-      availableBuildNumber: map['availableBuildNumber'] as int?,
-      allowedUpdateTypes: (map['allowedUpdateTypes'] as List<dynamic>?)
-              ?.map((e) => UpdateType.values.firstWhere(
-                    (type) => type.name == e,
-                    orElse: () => UpdateType.flexible,
-                  ))
-              .toList() ??
-          [],
-      updatePriority: map['updatePriority'] as int? ?? 0,
-      clientVersionStalenessDays: map['clientVersionStalenessDays'] as int?,
-      installStatus: UpdateInstallStatus.values.firstWhere(
-        (e) => e.name == map['installStatus'],
-        orElse: () => UpdateInstallStatus.unknown,
-      ),
-      platform: map['platform'] as String? ?? 'unknown',
+      isUpdateAvailable: json['isUpdateAvailable'] as bool? ?? false,
+      currentVersion: json['currentVersion'] as String? ?? '0.0.0',
+      availableVersion: json['availableVersion'] as String? ?? '0.0.0',
+      currentBuildNumber: json['currentBuildNumber'] as int? ?? 0,
+      availableBuildNumber: json['availableBuildNumber'] as int? ?? 0,
+      immediateUpdateAllowed: json['immediateUpdateAllowed'] as bool? ?? false,
+      flexibleUpdateAllowed: json['flexibleUpdateAllowed'] as bool? ?? false,
+      updatePriority: json['updatePriority'] as int?,
+      clientVersionStalenessDays: json['clientVersionStalenessDays'] as int?,
+      installStatus: _parseInstallStatus(json['installStatus'] as int?),
+      availability: _parseAvailability(json['availability'] as int?),
+      platform: json['platform'] as String? ?? 'unknown',
     );
   }
 
-  /// Converts the [UpdateInfo] instance to a Map.
-  Map<String, dynamic> toMap() {
+  /// Converts the [UpdateInfo] to a JSON map.
+  Map<String, dynamic> toJson() {
     return {
       'isUpdateAvailable': isUpdateAvailable,
-      'updateAvailability': updateAvailability.name,
       'currentVersion': currentVersion,
       'availableVersion': availableVersion,
       'currentBuildNumber': currentBuildNumber,
       'availableBuildNumber': availableBuildNumber,
-      'allowedUpdateTypes': allowedUpdateTypes.map((e) => e.name).toList(),
+      'immediateUpdateAllowed': immediateUpdateAllowed,
+      'flexibleUpdateAllowed': flexibleUpdateAllowed,
       'updatePriority': updatePriority,
       'clientVersionStalenessDays': clientVersionStalenessDays,
-      'installStatus': installStatus.name,
+      'installStatus': installStatus.index,
+      'availability': availability.index,
       'platform': platform,
     };
+  }
+
+  static UpdateInstallStatus _parseInstallStatus(int? status) {
+    if (status == null || status < 0 || status >= UpdateInstallStatus.values.length) {
+      return UpdateInstallStatus.unknown;
+    }
+    return UpdateInstallStatus.values[status];
+  }
+
+  static UpdateAvailability _parseAvailability(int? availability) {
+    if (availability == null || availability < 0 || availability >= UpdateAvailability.values.length) {
+      return UpdateAvailability.unknown;
+    }
+    return UpdateAvailability.values[availability];
   }
 }

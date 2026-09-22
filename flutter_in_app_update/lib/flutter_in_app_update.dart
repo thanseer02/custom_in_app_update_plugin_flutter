@@ -1,66 +1,81 @@
+import 'package:flutter/services.dart';
+import 'enums/update_install_status.dart';
 import 'models/update_info.dart';
-import 'models/in_app_update_config.dart';
-import 'platform/flutter_in_app_update_platform_interface.dart';
 
 export 'enums/update_availability.dart';
 export 'enums/update_install_status.dart';
 export 'enums/update_type.dart';
-export 'models/update_info.dart';
 export 'models/in_app_update_config.dart';
-
-/// The main entry point for the Flutter In-App Update plugin.
-/// 
-/// Provides methods to check for updates and start flexible or immediate updates.
+export 'models/update_info.dart';
+export 'services/version_comparator.dart';
+export 'enums/update_policy.dart';
+export 'models/update_decision.dart';
+export 'services/update_decision_engine.dart';
+/// The main entry point for the `flutter_in_app_update` plugin.
 class FlutterInAppUpdate {
-  /// Returns the underlying platform version.
-  Future<String?> getPlatformVersion() {
-    return FlutterInAppUpdatePlatform.instance.getPlatformVersion();
+  static const MethodChannel _channel = MethodChannel('flutter_in_app_update');
+  static const EventChannel _eventChannel = EventChannel('flutter_in_app_update_events');
+
+  Future<String?> getPlatformVersion() async {
+    return _channel.invokeMethod<String>('getPlatformVersion');
   }
 
-  /// Checks if there is an update available.
+  /// Checks if an update is available on the respective store.
   /// 
-  /// Returns an [UpdateInfo] object containing details about the availability,
-  /// priority, and allowed update types.
-  Future<UpdateInfo> checkForUpdate() {
-    return FlutterInAppUpdatePlatform.instance.checkForUpdate();
+  /// Returns an [UpdateInfo] object containing the available version, current
+  /// version, and update status.
+  static Future<UpdateInfo> checkForUpdate() async {
+    final result = await _channel.invokeMapMethod<String, dynamic>('checkForUpdate');
+    if (result == null) {
+      throw PlatformException(
+        code: 'UNAVAILABLE',
+        message: 'Could not fetch update info',
+      );
+    }
+    return UpdateInfo.fromJson(result);
   }
 
-  /// Starts a flexible update.
-  /// 
-  /// A flexible update downloads in the background while the user continues
-  /// using the app. Once downloaded, you must call [completeFlexibleUpdate]
-  /// to prompt the user to restart the app and install the update.
-  Future<void> startFlexibleUpdate() {
-    return FlutterInAppUpdatePlatform.instance.startFlexibleUpdate();
+  /// Retrieves the cached update info if already checked, otherwise fetches it.
+  static Future<UpdateInfo> getUpdateInfo() async {
+    return checkForUpdate();
   }
 
-  /// Starts an immediate update.
+  /// Starts a flexible update flow.
   /// 
-  /// An immediate update blocks the user from using the app until the
-  /// download and installation are complete.
-  Future<void> startImmediateUpdate() {
-    return FlutterInAppUpdatePlatform.instance.startImmediateUpdate();
+  /// Only supported on Android. Throws a [PlatformException] on iOS.
+  static Future<void> startFlexibleUpdate() async {
+    await _channel.invokeMethod('startFlexibleUpdate');
+  }
+
+  /// Starts an immediate update flow.
+  /// 
+  /// Only supported on Android. Throws a [PlatformException] on iOS.
+  static Future<void> startImmediateUpdate() async {
+    await _channel.invokeMethod('startImmediateUpdate');
   }
 
   /// Completes a flexible update that has been downloaded.
   /// 
-  /// This will prompt the user to restart the app to apply the update.
-  Future<void> completeFlexibleUpdate() {
-    return FlutterInAppUpdatePlatform.instance.completeFlexibleUpdate();
+  /// Only supported on Android. Throws a [PlatformException] on iOS.
+  static Future<void> completeFlexibleUpdate() async {
+    await _channel.invokeMethod('completeFlexibleUpdate');
   }
 
-  /// Opens the app store page for the current application.
-  /// 
-  /// Useful as a fallback if in-app updates are not supported or fail.
-  Future<void> openStore() {
-    return FlutterInAppUpdatePlatform.instance.openStore();
+  /// Opens the app's store page (Play Store / App Store).
+  static Future<void> openStore() async {
+    await _channel.invokeMethod('openStore');
   }
 
-  /// Retrieves the current update information without triggering a new check.
-  /// 
-  /// Useful to get the current installation status (e.g., if a flexible update
-  /// is currently downloading).
-  Future<UpdateInfo> getUpdateInfo() {
-    return FlutterInAppUpdatePlatform.instance.getUpdateInfo();
+  /// Stream to listen to update install status (useful for tracking flexible 
+  /// update progress on Android).
+  static Stream<UpdateInstallStatus> get installStatusStream {
+    return _eventChannel.receiveBroadcastStream().map((dynamic event) {
+      if (event is int) {
+        if (event >= 0 && event < UpdateInstallStatus.values.length) {
+          return UpdateInstallStatus.values[event];
+        }
+      }
+      return UpdateInstallStatus.unknown;
+    });
   }
 }

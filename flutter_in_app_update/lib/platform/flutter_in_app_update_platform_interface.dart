@@ -1,5 +1,6 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import '../models/update_info.dart';
+import 'flutter_in_app_update_method_channel.dart';
 
 /// The interface that implementations of flutter_in_app_update must implement.
 ///
@@ -14,7 +15,7 @@ abstract class FlutterInAppUpdatePlatform extends PlatformInterface {
 
   static final Object _token = Object();
 
-  static FlutterInAppUpdatePlatform _instance = _PlaceholderImplementation();
+  static FlutterInAppUpdatePlatform _instance = MethodChannelFlutterInAppUpdate();
 
   /// The default instance of [FlutterInAppUpdatePlatform] to use.
   ///
@@ -65,4 +66,4 @@ abstract class FlutterInAppUpdatePlatform extends PlatformInterface {
   }
 }
 
-class _PlaceholderImplementation extends FlutterInAppUpdatePlatform {}
+

@@ -1,15 +1,15 @@
-/// Represents the progress and status of an ongoing update installation.
+/// Represents the installation status of a flexible update.
 enum UpdateInstallStatus {
   /// The install status is unknown.
   unknown,
 
-  /// The update is pending and hasn't started downloading yet.
+  /// The update is pending.
   pending,
 
-  /// The update is currently being downloaded.
+  /// The update is downloading.
   downloading,
 
-  /// The update has been successfully downloaded and is ready to be installed.
+  /// The update has been downloaded and is ready to be installed.
   downloaded,
 
   /// The update is currently being installed.
@@ -21,6 +21,6 @@ enum UpdateInstallStatus {
   /// The update failed to install.
   failed,
 
-  /// The update installation was canceled by the user or the system.
+  /// The update was canceled by the user.
   canceled,
 }
