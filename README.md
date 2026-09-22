@@ -1,132 +1,245 @@
-# Custom Flutter in-app updates
+# custom_app_update
 
-A UI-independent controller for Google Play flexible updates. Design your own
-bottom sheet, dialog, page, banner, or widget. Google Play still presents its
-required consent UI. Downloads and installation use Google Play.
+A Flutter **Android plugin** for Google Play flexible in-app updates with UI you
+control. Show an update in a bottom sheet, dialog, full screen, banner, or any
+other Flutter widget.
 
-## Add to your app
+The plugin includes its own Kotlin implementation and uses Google's official
+`com.google.android.play:app-update:2.1.0` library directly.
 
-Copy `lib/custom_app_update.dart` into your app, then run:
+> Your Flutter UI surrounds the download and restart experience. Google Play's
+> required update confirmation is still shown and cannot be restyled or bypassed.
 
-```sh
-flutter pub add in_app_update:^4.2.5
-```
+## Features
 
-Alternatively, copy this folder into your repository and add a path dependency:
+- UI-independent `ChangeNotifier` controller.
+- Real downloaded/total byte counts and progress from 0 to 1.
+- Flexible background downloads that survive closing your custom UI.
+- Explicit restart/install action; no automatic install or repeated prompts.
+- Downloaded-update recovery when the app returns to the foreground.
+- Cancellation, errors, eligibility checks, and duplicate-action guards.
+- Runnable example with bottom sheet, dialog, and full-screen presentations.
+- Example-only demo backend for local UI testing without Google Play.
+
+## Platform and requirements
+
+| Requirement | Details |
+| --- | --- |
+| Platform | Android; iOS, web, and desktop updates are not implemented |
+| Dart / Flutter | Dart 3.6+, Flutter 3.27+; see validation notes for the SDK actually tested |
+| Android minimum | Plugin minSdk 21; keep a higher minimum if your Flutter host requires it |
+| Android build tools | compileSdk 36, Java 17, Kotlin 2.2.20, Android Gradle Plugin 8.11.1 |
+| Example build tools | Flutter 3.41.2; use its generated Android toolchain or newer compatible tools |
+| Real updates | Google Play distribution and an eligible newer versionCode |
+
+The plugin is a development prerelease. See [testing](TESTING.md) and
+[publishing](PUBLISHING.md) before releasing it.
+
+Current local validation: 18 tests passed, Flutter analysis passed, and the
+Android example compiled. A clean release copy passed the pub publish dry run.
+Actual Google Play device testing is still required; see [VALIDATION.md](VALIDATION.md).
+
+## Install locally before publication
+
+Copy or clone this plugin into your repository, then add a **path dependency**
+to your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
+  flutter:
+    sdk: flutter
   custom_app_update:
-    path: packages/custom_app_update
+    path: ../custom_app_update
 ```
 
-With a path dependency, import:
+Adjust the path to the plugin folder, then run `flutter pub get` and fully rebuild
+the app. Hot reload cannot install new native plugin code. Keep the entire plugin
+folder: copying only its Dart file omits the Android implementation.
+
+Once you have published the package, consumers can use its hosted dependency:
+
+```yaml
+dependencies:
+  custom_app_update: ^0.2.0-dev.1
+```
+
+## Quick start
+
+Create **one controller above your routes and update surfaces**. A dialog closing
+must not dispose the controller that owns its download.
 
 ```dart
+import 'dart:async';
 import 'package:custom_app_update/custom_app_update.dart';
+import 'package:flutter/material.dart';
+
+class UpdateHost extends StatefulWidget {
+  const UpdateHost({super.key});
+
+  @override
+  State<UpdateHost> createState() => _UpdateHostState();
+}
+
+class _UpdateHostState extends State<UpdateHost> {
+  late final CustomAppUpdateController updates;
+
+  @override
+  void initState() {
+    super.initState();
+    updates = CustomAppUpdateController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(updates.check());
+    });
+  }
+
+  @override
+  void dispose() {
+    updates.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('App updates')),
+      body: ListenableBuilder(
+        listenable: updates,
+        builder: (context, _) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (updates.isChecking)
+                const CircularProgressIndicator(),
+              if (updates.canDownload)
+                FilledButton(
+                  onPressed: () => unawaited(updates.download()),
+                  child: const Text('Download update'),
+                ),
+              if (updates.phase == UpdatePhase.downloading)
+                LinearProgressIndicator(value: updates.downloadProgress),
+              if (updates.canInstall)
+                FilledButton(
+                  onPressed: () => unawaited(updates.restartAndInstall()),
+                  child: const Text('Restart and install'),
+                ),
+              if (updates.error != null)
+                const Text('The update could not finish. Please try again.'),
+              TextButton(
+                onPressed: updates.isChecking
+                    ? null
+                    : () => unawaited(updates.check()),
+                child: const Text('Check for updates'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
 ```
 
-If you copied the Dart file, use your local import instead.
+For complete status messages and all three presentation styles, see
+[`example/lib/main.dart`](example/lib/main.dart). Its `UpdateContent` widget is
+ordinary Flutter UI. Replace it with your design and keep the same controller.
 
-## Any UI works
+Supply release notes, version labels, and translations from your app; Google
+Play's update API does not return your release-note text.
 
-Create one `CustomAppUpdateController` in an app-level State, provider, or other
-owner that outlives your update UI. Call `check()` once after the first frame.
-Dispose the controller when its owner is destroyed, not when a sheet closes.
-The controller refreshes its state when the app resumes; checks never open UI.
+## Controller API
 
-```dart
-ListenableBuilder(
-  listenable: updates,
-  builder: (context, _) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(updates.phase.name), // Replace with your user-facing copy.
-      if (updates.phase == UpdatePhase.downloading)
-        const LinearProgressIndicator(),
-      if (updates.canDownload)
-        FilledButton(
-          onPressed: updates.download,
-          child: const Text('Update'),
-        ),
-      if (updates.canInstall)
-        FilledButton(
-          onPressed: updates.restartAndInstall,
-          child: const Text('Restart'),
-        ),
-    ],
-  ),
-)
-```
-
-Place that builder in `showModalBottomSheet`, `showDialog`, or a `Scaffold`.
-`example/main.dart` contains all three presentations and controller ownership.
-To run it, use it as `lib/main.dart` in an Android-enabled Flutter application
-with this package as a dependency. This folder is a Dart/Flutter package, not
-an Android application with a generated host project.
-
-## API
-
-| Member | Use |
+| Member | Meaning |
 | --- | --- |
-| `check()` | Refresh availability without prompting |
-| `download()` | Show Play consent, then download in the background |
-| `restartAndInstall()` | Install after the user chooses Restart |
-| `phase` | Render available, downloading, ready, canceled, etc. |
-| `isChecking` | Render the availability check indicator |
-| `canDownload`, `canInstall` | Enable the corresponding buttons |
-| `info` | Inspect version code, priority, and eligibility |
-| `error` | Log technical failures; show your own friendly message |
-| `downloadProgress` | Always null: use indeterminate progress |
+| `check()` | Refresh availability; never opens a prompt |
+| `download()` | Request Play consent and download the flexible update |
+| `restartAndInstall()` | Install the downloaded update and let Play restart the app |
+| `phase` | Current `UpdatePhase` for rendering your own UI |
+| `isChecking` | Whether an availability request is running |
+| `canDownload` / `canInstall` | Whether the corresponding action can run |
+| `downloadProgress` | Actual progress in `[0, 1]`; null before Play knows the size |
+| `bytesDownloaded` / `totalBytesToDownload` | Native download byte counts |
+| `info` | Latest `AppUpdateInfo`: eligibility, version code, priority, and staleness |
+| `error` | Latest error for logging and your own friendly message |
 
-## Behavior and limits
+`download()` may remain pending throughout the download. Listen to the controller
+rather than waiting for the future to update your screen. On success the phase
+becomes `readyToInstall`. Rejecting consent produces `canceled`.
 
-- `in_app_update` exposes installation states, not byte counts. A real
-  percentage requires extending the native plugin to expose downloaded/total
-  bytes. This implementation does not fabricate progress.
-- Your app supplies release notes, version labels, colors, and copy. The API
-  does not supply your release-note text.
-- Closing a sheet or dialog does not cancel the Play download. There is no
-  public cancel-download method in this package; label dismissal accordingly.
-- A rejected Play prompt produces `canceled`, not an exception to show users.
-- A downloaded update recovered on resume becomes `readyToInstall`.
-- Checks and repeated Download/Restart taps are guarded against duplicates.
-- Call `download()` only in response to your user choosing Update. The
-  controller never automatically shows prompts on resume.
-- Save unsaved work before `restartAndInstall()`. The app may restart before
-  its future resolves. Call this action from a foreground screen.
-- Use one controller and avoid separate direct calls to `InAppUpdate` elsewhere;
-  the underlying plugin keeps shared native update state.
-- Android only. Google Play decides eligibility, including rollout and account
-  access. A public release does not mean every user immediately sees an update.
+Methods on the controller capture operational failures in `error`. Direct users
+of `GooglePlayUpdateBackend` must handle `PlatformException` themselves.
 
-## Validation
+## State flow
 
-This package uses `in_app_update` 4.2.5 for compatibility with the installed
-Flutter 3.41.2 / Dart 3.11 SDK. Version 5.0.0 requires Dart 3.12 or newer.
+```text
+check → available → download → Play consent → pending → downloading
+                                                        ↓
+                                                  readyToInstall
+                                                        ↓
+                                                restartAndInstall
+                                                        ↓
+                                              installing → app restart
+```
 
-Verified here: `flutter analyze` passed with no issues, and all 8 controller
-tests passed. A real Google Play download/install was not run in this workspace.
+Other phases include `upToDate`, `unavailable`, `unsupported`, `canceled`, and
+`failed`. `installed` may be observed, but an actual app restart can occur before
+Flutter receives a final callback.
+
+Closing your custom UI does not cancel the download. There is intentionally no
+cancel-download API; label dismissal as “Close” or “Continue using app.”
+Save unsaved user work before requesting restart. Keep a single controller per
+Flutter engine and avoid concurrent independent calls to the native backend.
+
+## Run the example
+
+From the plugin root:
 
 ```sh
+cd example
 flutter pub get
-flutter analyze
-flutter test
+flutter run --dart-define=UPDATE_DEMO=true
 ```
 
-Tests use an injected backend to exercise the controller. Real consent,
-downloads, installation, and app restart require a device and Play distribution.
+This runs on a connected Android device or emulator and shows a **DEMO MODE**
+label. Try the three UI styles and the Success, Cancel, Download fails, and
+Install fails scenarios. The demo performs no actual download, Play consent, or
+app restart. Use **Reset demo** to try another run.
 
-For an end-to-end test, install a lower version through a Play testing track,
-publish a higher versionCode accessible to the same tester, then exercise the
-custom sheet/dialog/page. Keep the application ID and signing key consistent.
-Also test rejection, dismissing the custom UI during download, returning to the
-app after download, and Restart. Internal app sharing has its own workflow in
-Google's testing guide; follow those instructions if using it instead.
+For real Google Play testing, omit `UPDATE_DEMO`, build the example, and distribute
+it through Play. A locally installed debug APK does not establish Play update
+eligibility. Follow the two-version workflow in [TESTING.md](TESTING.md).
 
-Sources:
-- https://pub.dev/packages/in_app_update
-- https://pub.dev/documentation/in_app_update/latest/in_app_update/InAppUpdate-class.html
-- https://developer.android.com/guide/playcore/in-app-updates/kotlin-java
-- https://developer.android.com/guide/playcore/in-app-updates/test
-# custom_in_app_update_plugin_flutter
+## Package layout
+
+```text
+lib/                     Public controller, native channel backend, data models
+android/                 Kotlin plugin and Google Play library dependency
+example/lib/             Custom UI examples and simulated backend
+example/android/         Runnable Android host application
+test/                    Controller and platform-channel tests
+example/test/            Example widget tests
+TESTING.md               Local and real-device testing instructions
+PUBLISHING.md            Maintainer release instructions
+```
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| `MissingPluginException` | Add the entire path/hosted plugin dependency and do a full rebuild |
+| `UPDATE_UNAVAILABLE` / no update | Play account access, distribution, rollout, versionCode, and flexible eligibility |
+| No numeric progress yet | Play has not reported a positive total size; show indeterminate progress |
+| `NO_ACTIVITY` | Start the download or install while your app is in the foreground |
+| `NOT_DOWNLOADED` | Wait for `canInstall` before requesting installation |
+| `CHECK_FAILED`, `DOWNLOAD_FAILED`, `INSTALL_FAILED` | Log `error`; native `PlatformException.details` can contain a Play error code |
+| Gradle or Kotlin incompatibility | Match the Android build toolchain listed above; compare the example host |
+
+## References
+
+- [Google Play in-app updates](https://developer.android.com/guide/playcore/in-app-updates)
+- [Android implementation guide](https://developer.android.com/guide/playcore/in-app-updates/kotlin-java)
+- [Google Play testing guide](https://developer.android.com/guide/playcore/in-app-updates/test)
+- [Flutter plugin development](https://docs.flutter.dev/packages-and-plugins/developing-packages)
+
+## License
+
+BSD-3-Clause. See [LICENSE](LICENSE).

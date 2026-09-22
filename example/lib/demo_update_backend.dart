@@ -29,7 +29,8 @@ class DemoUpdateBackend implements UpdateBackend {
         packageName: 'dev.customappupdate.example',
         availableVersionCode: 11,
         bytesDownloaded: _bytes,
-        totalBytesToDownload: _status == InstallStatus.unknown ? 0 : _totalBytes,
+        totalBytesToDownload:
+            _status == InstallStatus.unknown ? 0 : _totalBytes,
       );
 
   void _emit(InstallStatus status, {int errorCode = 0}) {

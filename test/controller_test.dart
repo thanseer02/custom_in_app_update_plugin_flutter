@@ -7,18 +7,19 @@ import 'package:flutter_test/flutter_test.dart';
 AppUpdateInfo available({
   InstallStatus status = InstallStatus.unknown,
   bool allowed = true,
-}) => AppUpdateInfo(
-  updateAvailability: UpdateAvailability.updateAvailable,
-  immediateUpdateAllowed: true,
-  immediateAllowedPreconditions: null,
-  flexibleUpdateAllowed: allowed,
-  flexibleAllowedPreconditions: null,
-  availableVersionCode: 12,
-  installStatus: status,
-  packageName: 'example.app',
-  clientVersionStalenessDays: 1,
-  updatePriority: 0,
-);
+}) =>
+    AppUpdateInfo(
+      updateAvailability: UpdateAvailability.updateAvailable,
+      immediateUpdateAllowed: true,
+      immediateAllowedPreconditions: null,
+      flexibleUpdateAllowed: allowed,
+      flexibleAllowedPreconditions: null,
+      availableVersionCode: 12,
+      installStatus: status,
+      packageName: 'example.app',
+      clientVersionStalenessDays: 1,
+      updatePriority: 0,
+    );
 
 class FakeBackend implements UpdateBackend {
   @override
@@ -72,7 +73,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       await controller.download();
       expect(backend.downloads, 1);
-      backend.events.add(const UpdateInstallState(status: InstallStatus.downloading));
+      backend.events
+          .add(const UpdateInstallState(status: InstallStatus.downloading));
       expect(controller.phase, UpdatePhase.downloading);
       backend.result.complete(AppUpdateResult.success);
       await download;
@@ -117,7 +119,8 @@ void main() {
     await controller.check();
     backend.checkResult = Completer<AppUpdateInfo>();
     final checking = controller.check();
-    backend.events.add(const UpdateInstallState(status: InstallStatus.downloaded));
+    backend.events
+        .add(const UpdateInstallState(status: InstallStatus.downloaded));
     backend.checkResult!.complete(available());
     await checking;
     expect(controller.canInstall, isTrue);
@@ -146,5 +149,47 @@ void main() {
     other.dispose();
     backend.checkResult!.complete(available());
     await checking;
+  });
+
+  test('native bytes drive real progress and unknown size is indeterminate',
+      () async {
+    await controller.check();
+    backend.events.add(const UpdateInstallState(
+      status: InstallStatus.downloading,
+      bytesDownloaded: 25,
+      totalBytesToDownload: 100,
+    ));
+    expect(controller.downloadProgress, 0.25);
+    expect(controller.bytesDownloaded, 25);
+    backend.events.add(const UpdateInstallState(
+      status: InstallStatus.downloading,
+      bytesDownloaded: 150,
+      totalBytesToDownload: 100,
+    ));
+    expect(controller.downloadProgress, 1);
+    backend.events
+        .add(const UpdateInstallState(status: InstallStatus.downloading));
+    expect(controller.downloadProgress, isNull);
+  });
+
+  test('an unknown event cannot hide an available update during check',
+      () async {
+    backend.checkResult = Completer<AppUpdateInfo>();
+    final checking = controller.check();
+    backend.events.add(const UpdateInstallState(status: InstallStatus.unknown));
+    backend.checkResult!.complete(available());
+    await checking;
+    expect(controller.canDownload, isTrue);
+  });
+
+  test('native errors settle download and permit a fresh retry', () async {
+    await controller.check();
+    final download = controller.download();
+    await Future<void>.delayed(Duration.zero);
+    backend.result.completeError(StateError('Native download failed'));
+    await download;
+    expect(controller.phase, UpdatePhase.failed);
+    expect(controller.error, isNotNull);
+    expect(controller.canDownload, isTrue);
   });
 }

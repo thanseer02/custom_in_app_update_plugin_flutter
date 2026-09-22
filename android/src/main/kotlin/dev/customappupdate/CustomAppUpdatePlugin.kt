@@ -67,9 +67,16 @@ class CustomAppUpdatePlugin : FlutterPlugin, ActivityAware,
         when (call.method) {
             "check" -> {
                 checkResults.add(result)
+                val revision = statusRevision
                 currentManager.appUpdateInfo
                     .addOnSuccessListener { info ->
-                        if (checkResults.remove(result)) result.success(infoMap(info))
+                        if (checkResults.remove(result)) {
+                            val snapshot = infoMap(info)
+                            // Also settle a pending download if its terminal
+                            // event was missed while the app was backgrounded.
+                            if (statusRevision == revision) deliverState(snapshot)
+                            result.success(snapshot)
+                        }
                     }
                     .addOnFailureListener { error ->
                         if (checkResults.remove(result)) fail(result, "CHECK_FAILED", error)
@@ -91,6 +98,7 @@ class CustomAppUpdatePlugin : FlutterPlugin, ActivityAware,
             return
         }
         downloadResult = result
+        statusRevision++ // Invalidate snapshots from the previous attempt.
         // A fresh AppUpdateInfo is required for every consent attempt.
         currentManager.appUpdateInfo.addOnSuccessListener { info ->
             if (downloadResult !== result) return@addOnSuccessListener
@@ -173,6 +181,7 @@ class CustomAppUpdatePlugin : FlutterPlugin, ActivityAware,
         if (requestCode != REQUEST_UPDATE) return false
         when (resultCode) {
             Activity.RESULT_CANCELED -> {
+                statusRevision++
                 downloadResult?.success("canceled")
                 downloadResult = null
                 sink?.success(mapOf("installStatus" to InstallStatus.CANCELED))

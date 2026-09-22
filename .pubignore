@@ -5,8 +5,11 @@ build/
 .idea/
 *.iml
 .gradle/
+.kotlin/
 local.properties
 key.properties
 *.jks
 *.keystore
-.kotlin/
+pubspec.lock
+*.zip
+coverage/

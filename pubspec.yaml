@@ -1,6 +1,7 @@
 name: custom_app_update
 description: Android in-app updates with custom Flutter UI, real download progress, and restart control using the official Google Play library.
 version: 0.2.0-dev.1
+repository: https://github.com/thanseer02/custom_in_app_update_plugin_flutter
 topics:
   - android
   - in-app-update

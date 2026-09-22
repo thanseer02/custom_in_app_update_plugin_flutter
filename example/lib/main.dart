@@ -119,7 +119,8 @@ class _UpdateExampleState extends State<UpdateExample> {
                             onPressed: () => Navigator.of(context).push<void>(
                               MaterialPageRoute(
                                 builder: (_) => Scaffold(
-                                  appBar: AppBar(title: const Text('App update')),
+                                  appBar:
+                                      AppBar(title: const Text('App update')),
                                   body: SafeArea(
                                     child: SingleChildScrollView(
                                       child: Center(child: updateContent()),
@@ -140,12 +141,13 @@ class _UpdateExampleState extends State<UpdateExample> {
                         ListenableBuilder(
                           listenable: updates,
                           builder: (_, child) {
-                            final busy = updates.isChecking || const {
-                              UpdatePhase.awaitingConsent,
-                              UpdatePhase.pending,
-                              UpdatePhase.downloading,
-                              UpdatePhase.installing,
-                            }.contains(updates.phase);
+                            final busy = updates.isChecking ||
+                                const {
+                                  UpdatePhase.awaitingConsent,
+                                  UpdatePhase.pending,
+                                  UpdatePhase.downloading,
+                                  UpdatePhase.installing,
+                                }.contains(updates.phase);
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -157,24 +159,31 @@ class _UpdateExampleState extends State<UpdateExample> {
                                         label: Text(switch (scenario) {
                                           DemoScenario.success => 'Success',
                                           DemoScenario.canceled => 'Cancel',
-                                          DemoScenario.downloadFailure => 'Download fails',
-                                          DemoScenario.installFailure => 'Install fails',
+                                          DemoScenario.downloadFailure =>
+                                            'Download fails',
+                                          DemoScenario.installFailure =>
+                                            'Install fails',
                                         }),
                                         selected: demo!.scenario == scenario,
-                                        onSelected: busy ? null : (_) {
-                                          setState(() => demo!.scenario = scenario);
-                                          demo!.reset();
-                                          unawaited(updates.check());
-                                        },
+                                        onSelected: busy
+                                            ? null
+                                            : (_) {
+                                                setState(() =>
+                                                    demo!.scenario = scenario);
+                                                demo!.reset();
+                                                unawaited(updates.check());
+                                              },
                                       ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
                                 OutlinedButton.icon(
-                                  onPressed: busy ? null : () {
-                                    demo!.reset();
-                                    unawaited(updates.check());
-                                  },
+                                  onPressed: busy
+                                      ? null
+                                      : () {
+                                          demo!.reset();
+                                          unawaited(updates.check());
+                                        },
                                   icon: const Icon(Icons.replay),
                                   label: const Text('Reset demo'),
                                 ),
@@ -201,7 +210,8 @@ class _UpdateExampleState extends State<UpdateExample> {
 /// Replace this entire widget with your own design. Only the controller API
 /// matters; the update implementation does not depend on Material widgets.
 class UpdateContent extends StatelessWidget {
-  const UpdateContent({super.key, required this.controller, this.demoMode = false});
+  const UpdateContent(
+      {super.key, required this.controller, this.demoMode = false});
 
   final CustomAppUpdateController controller;
   final bool demoMode;
@@ -270,7 +280,8 @@ class UpdateContent extends StatelessWidget {
                   LinearProgressIndicator(value: controller.downloadProgress),
                   if (controller.downloadProgress != null) ...[
                     const SizedBox(height: 8),
-                    Text('${(controller.downloadProgress! * 100).round()}% downloaded'),
+                    Text(
+                        '${(controller.downloadProgress! * 100).round()}% downloaded'),
                   ],
                 ],
                 const SizedBox(height: 24),
@@ -282,7 +293,9 @@ class UpdateContent extends StatelessWidget {
                 if (controller.canInstall)
                   FilledButton(
                     onPressed: () => unawaited(controller.restartAndInstall()),
-                    child: Text(demoMode ? 'Finish demo installation' : 'Restart and install'),
+                    child: Text(demoMode
+                        ? 'Finish demo installation'
+                        : 'Restart and install'),
                   ),
                 if (!controller.isChecking &&
                     !progressing &&

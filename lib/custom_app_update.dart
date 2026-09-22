@@ -43,10 +43,9 @@ class GooglePlayUpdateBackend implements UpdateBackend {
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   @override
-  Stream<UpdateInstallState> get statuses => _events
-      .receiveBroadcastStream()
-      .map((event) => UpdateInstallState.fromMap(
-          Map<Object?, Object?>.from(event as Map)));
+  Stream<UpdateInstallState> get statuses =>
+      _events.receiveBroadcastStream().map((event) =>
+          UpdateInstallState.fromMap(Map<Object?, Object?>.from(event as Map)));
 
   @override
   Future<AppUpdateInfo> check() async {
@@ -78,7 +77,7 @@ class GooglePlayUpdateBackend implements UpdateBackend {
 class CustomAppUpdateController extends ChangeNotifier
     with WidgetsBindingObserver {
   CustomAppUpdateController({UpdateBackend? backend})
-    : _backend = backend ?? GooglePlayUpdateBackend() {
+      : _backend = backend ?? GooglePlayUpdateBackend() {
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -164,10 +163,9 @@ class CustomAppUpdateController extends ChangeNotifier
       if (_applyInstallStatus(info.installStatus)) return;
       if (_phase == UpdatePhase.awaitingConsent || _completing) return;
       _phase = switch (info.updateAvailability) {
-        UpdateAvailability.updateAvailable =>
-          info.flexibleUpdateAllowed
-              ? UpdatePhase.available
-              : UpdatePhase.unavailable,
+        UpdateAvailability.updateAvailable => info.flexibleUpdateAllowed
+            ? UpdatePhase.available
+            : UpdatePhase.unavailable,
         UpdateAvailability.updateNotAvailable => UpdatePhase.upToDate,
         _ => UpdatePhase.unavailable,
       };
