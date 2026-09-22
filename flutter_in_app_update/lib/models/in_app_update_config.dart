@@ -1,5 +1,19 @@
+import '../enums/update_source.dart';
+
 /// Configuration for the in-app update process.
 class InAppUpdateConfig {
+  /// The source to check for updates.
+  final UpdateSource source;
+
+  /// The remote endpoint URL when [source] is [UpdateSource.remote].
+  final String? endpoint;
+
+  /// Maximum number of retries for remote requests.
+  final int maxRetries;
+
+  /// Delay between retries for remote requests.
+  final Duration retryDelay;
+
   /// The minimum version required to run the app. If the store version is
   /// greater than this, the user might be forced to update.
   final String? minimumVersion;
@@ -24,6 +38,10 @@ class InAppUpdateConfig {
   final Duration timeout;
 
   const InAppUpdateConfig({
+    this.source = UpdateSource.store,
+    this.endpoint,
+    this.maxRetries = 3,
+    this.retryDelay = const Duration(seconds: 2),
     this.minimumVersion,
     this.recommendedVersion,
     this.latestVersion,
@@ -31,5 +49,8 @@ class InAppUpdateConfig {
     this.checkOnStartup = true,
     this.checkInterval,
     this.timeout = const Duration(seconds: 15),
-  });
+  }) : assert(
+          source != UpdateSource.remote || (endpoint != null && endpoint != ''),
+          'endpoint must be provided when source is UpdateSource.remote',
+        );
 }
