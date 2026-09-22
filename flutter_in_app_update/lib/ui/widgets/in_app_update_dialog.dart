@@ -24,14 +24,14 @@ class InAppUpdateDialog extends StatelessWidget {
   final Widget Function(BuildContext context, UpdateInfo updateInfo)? customBuilder;
 
   const InAppUpdateDialog({
-    Key? key,
+    super.key,
     required this.updateInfo,
     required this.onUpdate,
     this.onLater,
     this.style,
     this.isDismissible = false,
     this.customBuilder,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

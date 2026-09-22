@@ -44,6 +44,12 @@ class ErrorMapper {
         return InAppUpdateErrorCode.unsupportedPlatform;
       case 'UNSUPPORTED_UPDATE_TYPE':
         return InAppUpdateErrorCode.unsupportedUpdateType;
+      case 'NETWORK_ERROR':
+        return InAppUpdateErrorCode.networkError;
+      case 'TIMEOUT':
+        return InAppUpdateErrorCode.timeout;
+      case 'INVALID_CONFIGURATION':
+        return InAppUpdateErrorCode.invalidConfiguration;
       default:
         return InAppUpdateErrorCode.unknownError;
     }
@@ -76,7 +82,6 @@ class ErrorMapper {
       case InAppUpdateErrorCode.invalidConfiguration:
         return 'The configuration provided for the update is invalid.';
       case InAppUpdateErrorCode.unknownError:
-      default:
         return originalMessage ?? 'An unknown error occurred during the update process.';
     }
   }

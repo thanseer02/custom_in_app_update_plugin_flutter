@@ -100,13 +100,13 @@ void main() {
     test('downloaded update status reported in UpdateInfo', () async {
       MockMethodChannel.setUpdateAvailableResponse(
         installStatus: UpdateInstallStatus.downloaded.index,
-        availability: UpdateAvailability.developerTriggeredUpdateInProgress.index,
+        availability: UpdateAvailability.developerTriggered.index,
       );
 
       final updateInfo = await FlutterInAppUpdate.checkForUpdate();
 
       expect(updateInfo.installStatus, UpdateInstallStatus.downloaded);
-      expect(updateInfo.availability, UpdateAvailability.developerTriggeredUpdateInProgress);
+      expect(updateInfo.availability, UpdateAvailability.developerTriggered);
     });
 
     test('complete flexible update flow succeeds', () async {

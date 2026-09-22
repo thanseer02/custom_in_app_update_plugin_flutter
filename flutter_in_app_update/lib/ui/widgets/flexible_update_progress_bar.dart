@@ -22,14 +22,14 @@ class FlexibleUpdateProgressBar extends StatelessWidget {
   final Widget Function(BuildContext context, UpdateInstallStatus status)? customBuilder;
 
   const FlexibleUpdateProgressBar({
-    Key? key,
+    super.key,
     required this.statusStream,
     this.labelText,
     this.labelTextStyle,
     this.progressColor,
     this.trackColor,
     this.customBuilder,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -27,7 +27,7 @@ class UpdateErrorState extends StatelessWidget {
   final Widget Function(BuildContext context, String error, VoidCallback? onRetry)? customBuilder;
 
   const UpdateErrorState({
-    Key? key,
+    super.key,
     this.errorMessage = 'An error occurred while checking for updates.',
     this.onRetry,
     this.retryButtonText = 'Try Again',
@@ -36,7 +36,7 @@ class UpdateErrorState extends StatelessWidget {
     this.messageStyle,
     this.retryButtonStyle,
     this.customBuilder,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

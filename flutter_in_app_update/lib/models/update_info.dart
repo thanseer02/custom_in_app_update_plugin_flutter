@@ -92,6 +92,36 @@ class UpdateInfo {
     };
   }
 
+  UpdateInfo copyWith({
+    bool? isUpdateAvailable,
+    String? currentVersion,
+    String? availableVersion,
+    int? currentBuildNumber,
+    int? availableBuildNumber,
+    bool? immediateUpdateAllowed,
+    bool? flexibleUpdateAllowed,
+    int? updatePriority,
+    int? clientVersionStalenessDays,
+    UpdateInstallStatus? installStatus,
+    UpdateAvailability? availability,
+    String? platform,
+  }) {
+    return UpdateInfo(
+      isUpdateAvailable: isUpdateAvailable ?? this.isUpdateAvailable,
+      currentVersion: currentVersion ?? this.currentVersion,
+      availableVersion: availableVersion ?? this.availableVersion,
+      currentBuildNumber: currentBuildNumber ?? this.currentBuildNumber,
+      availableBuildNumber: availableBuildNumber ?? this.availableBuildNumber,
+      immediateUpdateAllowed: immediateUpdateAllowed ?? this.immediateUpdateAllowed,
+      flexibleUpdateAllowed: flexibleUpdateAllowed ?? this.flexibleUpdateAllowed,
+      updatePriority: updatePriority ?? this.updatePriority,
+      clientVersionStalenessDays: clientVersionStalenessDays ?? this.clientVersionStalenessDays,
+      installStatus: installStatus ?? this.installStatus,
+      availability: availability ?? this.availability,
+      platform: platform ?? this.platform,
+    );
+  }
+
   static UpdateInstallStatus _parseInstallStatus(int? status) {
     if (status == null || status < 0 || status >= UpdateInstallStatus.values.length) {
       return UpdateInstallStatus.unknown;
