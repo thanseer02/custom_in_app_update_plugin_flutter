@@ -1,0 +1,35 @@
+name: custom_in_app_update
+description: >
+  A Flutter plugin for Android in-app updates (Play Core In-App Update API)
+  and iOS App Store version checks, with a builder pattern that lets the
+  consuming app render fully custom UI (bottom sheet, dialog, banner, etc.)
+  instead of a fixed built-in prompt.
+version: 0.1.0
+homepage: https://example.com
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.example.custom_in_app_update
+        pluginClass: CustomInAppUpdatePlugin
+      ios:
+        pluginClass: CustomInAppUpdatePlugin
+        # iOS has no native in-app-update API; this platform folder can stay
+        # a no-op / stub since all iOS logic is done in pure Dart via the
+        # App Store lookup API. Kept here only so the plugin registers cleanly
+        # on iOS without errors.
