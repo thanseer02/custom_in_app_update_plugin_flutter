@@ -57,7 +57,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       iosBundleId: 'com.example.app',
       iosInstalledVersion: '1.0.0',
       uiBuilder: (context, info, onUpdate, onDismiss) {
-        return showModalBottomSheet<void>(
+        showModalBottomSheet<void>(
           context: context,
           isDismissible: !info.immediateAllowed,
           builder: (sheetContext) => _UpdateBottomSheet(
@@ -72,6 +72,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             },
           ),
         );
+        return null;
       },
     );
   }

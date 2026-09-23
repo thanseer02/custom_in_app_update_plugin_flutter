@@ -80,7 +80,7 @@ await CustomInAppUpdate.checkForUpdate(
   iosBundleId: 'com.company.app',
   iosInstalledVersion: packageInfo.version,
   uiBuilder: (context, info, onUpdate, onDismiss) {
-    return showModalBottomSheet(
+    showModalBottomSheet(
       context: context,
       isDismissible: !info.immediateAllowed,
       builder: (_) => MyUpdateSheet(
@@ -89,6 +89,7 @@ await CustomInAppUpdate.checkForUpdate(
         onDismiss: onDismiss,
       ),
     );
+    return null;
   },
 );
 ```
