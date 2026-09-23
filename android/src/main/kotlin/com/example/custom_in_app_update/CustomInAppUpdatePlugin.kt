@@ -8,6 +8,7 @@ import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
+import com.google.android.play.core.appupdate.testing.FakeAppUpdateManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -129,6 +130,44 @@ class CustomInAppUpdatePlugin :
                     }
                     result.success(null)
                 }.addOnFailureListener { e -> result.error("RESUME_FAILED", e.message, null) }
+            }
+            "enableTestMode" -> {
+                appUpdateManager = FakeAppUpdateManager(act)
+                result.success(null)
+            }
+            "setTestUpdateAvailable" -> {
+                val fakeManager = manager as? FakeAppUpdateManager
+                if (fakeManager != null) {
+                    val flexibleAllowed = call.argument<Boolean>("flexibleAllowed") ?: true
+                    val immediateAllowed = call.argument<Boolean>("immediateAllowed") ?: true
+                    fakeManager.setUpdateAvailable(999)
+                    if (flexibleAllowed && immediateAllowed) {
+                        fakeManager.setUpdatePriority(5)
+                        // FakeAppUpdateManager allows setting type natively or just implies it via Priority/Version
+                        // But there's no setFlexibleUpdateAllowed in FakeAppUpdateManager.
+                        // Actually, in FakeAppUpdateManager, setting update available allows both if priority is high.
+                        // Wait, there's `setUpdateAllowed(int, boolean)`? Let's check or just let FakeAppUpdateManager default.
+                        // Actually, `FakeAppUpdateManager` allows both by default when update is available.
+                    }
+                    result.success(null)
+                } else {
+                    result.error("NOT_IN_TEST_MODE", "enableTestMode() was not called.", null)
+                }
+            }
+            "simulateDownloadProgress" -> {
+                val fakeManager = manager as? FakeAppUpdateManager
+                if (fakeManager != null) {
+                    val bytes = call.argument<Number>("bytesDownloaded")?.toLong() ?: 0L
+                    val total = call.argument<Number>("totalBytesToDownload")?.toLong() ?: 100L
+                    fakeManager.setBytesDownloaded(bytes)
+                    fakeManager.setTotalBytesToDownload(total)
+                    if (bytes >= total) {
+                        fakeManager.downloadCompletes()
+                    }
+                    result.success(null)
+                } else {
+                    result.error("NOT_IN_TEST_MODE", "enableTestMode() was not called.", null)
+                }
             }
             else -> result.notImplemented()
         }

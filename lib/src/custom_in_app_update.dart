@@ -119,4 +119,37 @@ class CustomInAppUpdate {
     if (!Platform.isAndroid) return Future.value();
     return AndroidUpdateChannel.instance.resumeStalledUpdateIfNeeded();
   }
+
+  /// TESTING ONLY: Enables local test mode by injecting `FakeAppUpdateManager`.
+  /// Must be called before `checkForUpdate()`.
+  static Future<void> enableTestMode() {
+    if (!Platform.isAndroid) return Future.value();
+    return AndroidUpdateChannel.instance.enableTestMode();
+  }
+
+  /// TESTING ONLY: Simulates an update being available in test mode.
+  /// Must be called after `enableTestMode()`.
+  static Future<void> setTestUpdateAvailable({
+    bool flexibleAllowed = true,
+    bool immediateAllowed = true,
+  }) {
+    if (!Platform.isAndroid) return Future.value();
+    return AndroidUpdateChannel.instance.setTestUpdateAvailable(
+      flexibleAllowed: flexibleAllowed,
+      immediateAllowed: immediateAllowed,
+    );
+  }
+
+  /// TESTING ONLY: Simulates download progress in test mode.
+  /// Must be called while a flexible update is "downloading".
+  static Future<void> simulateDownloadProgress({
+    required int bytesDownloaded,
+    required int totalBytesToDownload,
+  }) {
+    if (!Platform.isAndroid) return Future.value();
+    return AndroidUpdateChannel.instance.simulateDownloadProgress(
+      bytesDownloaded: bytesDownloaded,
+      totalBytesToDownload: totalBytesToDownload,
+    );
+  }
 }

@@ -73,6 +73,33 @@ class AndroidUpdateChannel {
     await _channel.invokeMethod('resumeStalledUpdateIfNeeded');
   }
 
+  /// Enables local test mode by injecting FakeAppUpdateManager.
+  Future<void> enableTestMode() async {
+    await _channel.invokeMethod('enableTestMode');
+  }
+
+  /// Simulates an update being available in test mode.
+  Future<void> setTestUpdateAvailable({
+    bool flexibleAllowed = true,
+    bool immediateAllowed = true,
+  }) async {
+    await _channel.invokeMethod('setTestUpdateAvailable', {
+      'flexibleAllowed': flexibleAllowed,
+      'immediateAllowed': immediateAllowed,
+    });
+  }
+
+  /// Simulates download progress in test mode.
+  Future<void> simulateDownloadProgress({
+    required int bytesDownloaded,
+    required int totalBytesToDownload,
+  }) async {
+    await _channel.invokeMethod('simulateDownloadProgress', {
+      'bytesDownloaded': bytesDownloaded,
+      'totalBytesToDownload': totalBytesToDownload,
+    });
+  }
+
   /// Live install-state / download-progress events for a flexible update.
   Stream<UpdateInfo> get downloadProgressStream {
     _progressStream ??= _installStateChannel

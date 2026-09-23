@@ -134,6 +134,28 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
 
 ## Testing
 
+### Local Test Mode (No Play Store Required)
+You can test your custom UI locally using Google's `FakeAppUpdateManager`. 
+**Important:** You should wrap this in a `kDebugMode` check so you don't accidentally release your app in test mode!
+
+```dart
+import 'package:flutter/foundation.dart';
+
+// 1. Conditionally enable test mode for debug builds only
+if (kDebugMode) {
+  await CustomInAppUpdate.enableTestMode();
+  await CustomInAppUpdate.setTestUpdateAvailable(
+    flexibleAllowed: true,
+    immediateAllowed: true,
+  );
+}
+
+// 2. Trigger your update check as normal
+await CustomInAppUpdate.checkForUpdate(...);
+```
+*(If you are testing flexible updates locally, you can also use `CustomInAppUpdate.simulateDownloadProgress(bytesDownloaded: 50, totalBytesToDownload: 100)` to simulate download progress in the UI).*
+
+### Real Play Store Testing
 1. Publish version A to a Play Store internal testing track, install it via the Play Store link (not adb).
 2. Publish version B (higher version code) to the same track.
 3. Open the app and call `checkForUpdate` — allow a few minutes for Play Store propagation.
